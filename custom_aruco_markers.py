@@ -33,16 +33,16 @@ cap = cv2.VideoCapture(0)
 while(True):
     # Capture frame-by-frame
     ret, frame = cap.read()
+    if ret == True:
+        #lists of ids and the corners beloning to each id
+        corners, ids, rejectedImgPoints = aruco.detectMarkers(frame, aruco_dict)
+        # draw markers on farme
+        frame = aruco.drawDetectedMarkers(frame, corners, ids)
 
-    #lists of ids and the corners beloning to each id
-    corners, ids, rejectedImgPoints = aruco.detectMarkers(frame, aruco_dict)
-    # draw markers on farme
-    frame = aruco.drawDetectedMarkers(frame, corners, ids)
-
-    # resize frame to show even on smaller screens
-    frame = cv2.resize(frame, None, fx = 0.6, fy = 0.6)
-    # Display the resulting frame
-    cv2.imshow('frame',frame)
+        # resize frame to show even on smaller screens
+        frame = cv2.resize(frame, None, fx = 0.6, fy = 0.6)
+        # Display the resulting frame
+        cv2.imshow('frame',frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
