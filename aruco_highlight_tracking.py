@@ -2,14 +2,13 @@ import numpy as np
 import cv2
 import os
 import time
-# for simple noise reduction we use deque
-from collections import deque
-# passing arguments from command line interface
+from distutils import util
 import argparse
 parser = argparse.ArgumentParser(description = 'Marker Tracking & Pose Estimation')
-parser.add_argument('--inputVideo', type = str, default = False, help = 'Path to the video of the object to be tracked')
+parser.add_argument('--inputVideo', type = str, help = 'Path to the video of the object to be tracked')
 parser.add_argument('--referenceImage', type = str, help = 'Path to an image of the object to track including markers')
 parser.add_argument('--outputVideo', type = str, default = None, help = 'Optional - Path to output video')
+parser.add_argument('--smooth', type = util.strtobool, default = False, help = 'Should smooth transformation matrix?')
 args = parser.parse_args()
 
 # load video file
@@ -54,8 +53,11 @@ def which(x, values):
             indices.append(list(x).index(ii))
     return indices
 
-# simple noise reduction
-h_array = deque(maxlen = 15)
+if args.smooth:
+    # for simple noise reduction we use deque
+    from collections import deque
+    # simple noise reduction
+    h_array = deque(maxlen = 15)
 
 while(True):
     ret, frame = cap.read()
@@ -71,9 +73,13 @@ while(True):
                 these_res_corners = np.concatenate(res_corners, axis = 1)
                 these_ref_corners = np.concatenate([refCorners[x] for x in idx], axis = 1)
                 h, s = cv2.findHomography(these_ref_corners, these_res_corners)
-                h_array.append(h)
-                smooth_h = np.mean(h_array, axis = 0)
-                newRect = cv2.perspectiveTransform(rect, smooth_h, (gray.shape[1],gray.shape[0]))
+                if args.smooth:
+                    h_array.append(h)
+                    this_h = np.mean(h_array, axis = 0)
+                else:
+                    this_h = h
+                
+                newRect = cv2.perspectiveTransform(rect, this_h, (gray.shape[1],gray.shape[0]))
                 frame = cv2.polylines(frame, np.int32(newRect), True, (0,0,0), 10)
         if len(res_corners) > 0:
             cv2.aruco.drawDetectedMarkers(frame,res_corners,res_ids)
