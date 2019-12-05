@@ -45,12 +45,13 @@ rect = np.array([[[0,0],
                   [refImage.shape[1],refImage.shape[0]],
                   [0,refImage.shape[0]]]], dtype = "float32")
 
-# a little helper function for getting dettected marker ids
-def which(x, value):
+# a little helper function for getting all dettected marker ids
+# from the reference image markers
+def which(x, values):
     indices = []
-    for i, ii in enumerate(list(x)):
-        if ii == value:
-            indices.append(i)
+    for ii in list(values):
+        if ii in x:
+            indices.append(list(x).index(ii))
     return indices
 
 # simple noise reduction
@@ -60,18 +61,22 @@ while(True):
     ret, frame = cap.read()
     if frame is not None:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        res = cv2.aruco.detectMarkers(gray, aruco_dict, parameters = parameters)
-        if res[1] is not None:
-            idx = which(refIds, res[1][0])
+        res_corners, res_ids, _ = cv2.aruco.detectMarkers(gray, aruco_dict, parameters = parameters)
+        # if we have markers
+        if res_ids is not None:
+            idx = which(refIds, res_ids)
+            # if our markers are int he reference image
             if len(idx) > 0:
-                refMarkerIdx = idx[0]
-                h, s = cv2.findHomography(refCorners[refMarkerIdx], res[0][0])
+                # take all markers and reshape the list of corners
+                these_res_corners = np.concatenate(res_corners, axis = 1)
+                these_ref_corners = np.concatenate([refCorners[x] for x in idx], axis = 1)
+                h, s = cv2.findHomography(these_ref_corners, these_res_corners)
                 h_array.append(h)
                 smooth_h = np.mean(h_array, axis = 0)
                 newRect = cv2.perspectiveTransform(rect, smooth_h, (gray.shape[1],gray.shape[0]))
                 frame = cv2.polylines(frame, np.int32(newRect), True, (0,0,0), 10)
-        if len(res[0]) > 0:
-            cv2.aruco.drawDetectedMarkers(frame,res[0],res[1])
+        if len(res_corners) > 0:
+            cv2.aruco.drawDetectedMarkers(frame,res_corners,res_ids)
         # Display the resulting frame
         if args.outputVideo is not None:
             videoOut.write(frame)
