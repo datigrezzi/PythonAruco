@@ -4,10 +4,15 @@ import os
 import time
 from distutils import util
 import argparse
+
+# solvePnP tutorial:
+# https://www.learnopencv.com/head-pose-estimation-using-opencv-and-dlib/
+
 parser = argparse.ArgumentParser(description = 'Marker Tracking & Pose Estimation')
 parser.add_argument('--inputVideo', type = str, help = 'Path to the video of the object to be tracked')
 parser.add_argument('--referenceImage', type = str, help = 'Path to an image of the object to track including markers')
 parser.add_argument('--outputVideo', type = str, default = None, help = 'Optional - Path to output video')
+parser.add_argument('--vector', type = util.strtobool, default = True, help = 'Should pose vector be drawn?')
 parser.add_argument('--smooth', type = util.strtobool, default = False, help = 'Should smooth transformation matrix?')
 args = parser.parse_args()
 
@@ -44,6 +49,17 @@ rect = np.array([[[0,0],
                   [refImage.shape[1],refImage.shape[0]],
                   [0,refImage.shape[0]]]], dtype = "float32")
 
+# camera matrix estimate
+focal_length = cap.get(3)
+center = (cap.get(3)/2, cap.get(4)/2)
+camera_matrix = np.array(
+                         [[focal_length, 0, center[0]],
+                         [0, focal_length, center[1]],
+                         [0, 0, 1]], dtype = "double"
+                         )
+ 
+dist_coeffs = np.zeros((4,1)) # Assuming no lens distortion
+
 # a little helper function for getting all dettected marker ids
 # from the reference image markers
 def which(x, values):
@@ -57,7 +73,7 @@ if args.smooth:
     # for simple noise reduction we use deque
     from collections import deque
     # simple noise reduction
-    h_array = deque(maxlen = 15)
+    h_array = deque(maxlen = 5)
 
 while(True):
     ret, frame = cap.read()
@@ -72,15 +88,23 @@ while(True):
                 # take all markers and reshape the list of corners
                 these_res_corners = np.concatenate(res_corners, axis = 1)
                 these_ref_corners = np.concatenate([refCorners[x] for x in idx], axis = 1)
-                h, s = cv2.findHomography(these_ref_corners, these_res_corners)
+                h, s = cv2.findHomography(these_ref_corners, these_res_corners, cv2.RANSAC, 5.0)
                 if args.smooth:
                     h_array.append(h)
                     this_h = np.mean(h_array, axis = 0)
                 else:
                     this_h = h
-                
                 newRect = cv2.perspectiveTransform(rect, this_h, (gray.shape[1],gray.shape[0]))
                 frame = cv2.polylines(frame, np.int32(newRect), True, (0,0,0), 10)
+                if args.vector:
+                    # project points onto 2d image
+                    these_ref_corners_3d = np.append(these_ref_corners, np.add(np.zeros((1,these_ref_corners.shape[1],1)), 500), axis = 2)
+                    success, rotation_vector, translation_vector = cv2.solvePnP(these_ref_corners_3d, these_res_corners, camera_matrix, dist_coeffs, flags=cv2.cv2.SOLVEPNP_ITERATIVE)
+                    (pose_point_2d, jacobian) = cv2.projectPoints(np.array([(0.0, 0.0, 0.0), (0.0, 0.0, 500.0)]), rotation_vector, translation_vector, camera_matrix, dist_coeffs)
+                    p1 = (int(pose_point_2d[0][0][0]), int(pose_point_2d[0][0][1]))
+                    p2 = (int(pose_point_2d[1][0][0]), int(pose_point_2d[1][0][1]))
+                    cv2.line(frame, p1, p2, (0,0,255), 10)
+
         if len(res_corners) > 0:
             cv2.aruco.drawDetectedMarkers(frame,res_corners,res_ids)
         # Display the resulting frame
