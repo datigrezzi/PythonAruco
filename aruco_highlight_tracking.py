@@ -9,7 +9,6 @@ parser = argparse.ArgumentParser(description = 'Marker Tracking & Pose Estimatio
 parser.add_argument('--inputVideo', type = str, help = 'Path to the video of the object to be tracked')
 parser.add_argument('--referenceImage', type = str, help = 'Path to an image of the object to track including markers')
 parser.add_argument('--outputVideo', type = str, default = None, help = 'Optional - Path to output video')
-parser.add_argument('--vector', type = util.strtobool, default = True, help = 'Should pose vector be drawn?')
 parser.add_argument('--smooth', type = util.strtobool, default = False, help = 'Should smooth transformation matrix?')
 args = parser.parse_args()
 
@@ -45,17 +44,6 @@ rect = np.array([[[0,0],
                   [refImage.shape[1],0],
                   [refImage.shape[1],refImage.shape[0]],
                   [0,refImage.shape[0]]]], dtype = "float32")
-
-# camera matrix estimate
-focal_length = cap.get(3)
-center = (cap.get(3)/2, cap.get(4)/2)
-camera_matrix = np.array(
-                         [[focal_length, 0, center[0]],
-                         [0, focal_length, center[1]],
-                         [0, 0, 1]], dtype = "double"
-                         )
- 
-dist_coeffs = np.zeros((4,1)) # Assuming no lens distortion
 
 # a little helper function for getting all dettected marker ids
 # from the reference image markers
@@ -101,18 +89,6 @@ while(True):
                 newRect = cv2.perspectiveTransform(rect, this_h, (gray.shape[1],gray.shape[0]))
                 # draw the rectangle on the frame
                 frame = cv2.polylines(frame, np.int32(newRect), True, (0,0,0), 10)
-                # if we want the pose estimation
-                if args.vector:
-                    # add a distance estimate to the markers in the reference image (Z axis from camera) - here it is 50
-                    these_ref_corners_3d = np.append(these_ref_corners, np.add(np.zeros((1,these_ref_corners.shape[1],1)), 500), axis = 2)
-                    # estimate rotation and translation vectors with solvePnP
-                    success, rotation_vector, translation_vector = cv2.solvePnP(these_ref_corners_3d, these_res_corners, camera_matrix, dist_coeffs, flags=cv2.cv2.SOLVEPNP_ITERATIVE)
-                    # project the start and end points of the pose vector from reference image to frame
-                    (pose_point_2d, jacobian) = cv2.projectPoints(np.array([(0.0, 0.0, 0.0), (0.0, 0.0, 500.0)]), rotation_vector, translation_vector, camera_matrix, dist_coeffs)
-                    p1 = (int(pose_point_2d[0][0][0]), int(pose_point_2d[0][0][1]))
-                    p2 = (int(pose_point_2d[1][0][0]), int(pose_point_2d[1][0][1]))
-                    # draw the veector as a line in the frame
-                    cv2.line(frame, p1, p2, (0,0,255), 10)
             # draw detected markers in frame with their ids
             cv2.aruco.drawDetectedMarkers(frame,res_corners,res_ids)
         # if video is to be saved
