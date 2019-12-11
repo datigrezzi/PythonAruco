@@ -12,6 +12,15 @@ parser.add_argument('--outputVideo', type = str, default = None, help = 'Optiona
 parser.add_argument('--smooth', type = util.strtobool, default = False, help = 'Should smooth transformation matrix?')
 args = parser.parse_args()
 
+# a little helper function for getting all dettected marker ids
+# from the reference image markers
+def which(x, values):
+    indices = []
+    for ii in list(values):
+        if ii in x:
+            indices.append(list(x).index(ii))
+    return indices
+
 # load video file
 cap = cv2.VideoCapture(args.inputVideo)
 # open video file for writing
@@ -44,15 +53,6 @@ rect = np.array([[[0,0],
                   [refImage.shape[1],0],
                   [refImage.shape[1],refImage.shape[0]],
                   [0,refImage.shape[0]]]], dtype = "float32")
-
-# a little helper function for getting all dettected marker ids
-# from the reference image markers
-def which(x, values):
-    indices = []
-    for ii in list(values):
-        if ii in x:
-            indices.append(list(x).index(ii))
-    return indices
 
 if args.smooth:
     # for simple noise reduction we use deque
