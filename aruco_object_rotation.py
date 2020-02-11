@@ -8,10 +8,10 @@ from matplotlib.figure import Figure
 # passing arguments from command line interface
 import argparse
 parser = argparse.ArgumentParser(description = 'Marker Tracking & 3D Object Rotation')
-parser.add_argument('--inputVideo', type = str, default="/Users/iyad/projects/python/aruco_homography/materials/IMG_4471.MOV", help = 'Path to the video of the object to be tracked')
-parser.add_argument('--referenceImage', type = str, default = "/Users/iyad/projects/python/aruco_homography/materials/IMG_4468.jpg", help = 'Path to an image of the object to track including markers')
-parser.add_argument('--object', type = str, default = "/Users/iyad/Downloads/model.dae.obj", help = 'Path to an image of the object to track including markers')
-parser.add_argument('--outputVideo', type = str, default = "/Users/iyad/projects/python/aruco_homography/materials/object_rotation.mp4", help = 'Optional - Path to output video')
+parser.add_argument('--inputVideo', type = str, help = 'Path to the video of the object to be tracked')
+parser.add_argument('--referenceImage', type = str, help = 'Path to an image of the object to track including markers')
+parser.add_argument('--object', type = str, help = 'Path to an image of the object to track including markers')
+parser.add_argument('--outputVideo', type = str, help = 'Optional - Path to output video')
 args = parser.parse_args()
 
 # helper functions
